@@ -6,6 +6,8 @@ import TypePassword from './type-password.vue';
 import WalletReady from '../create-wallet/wallet-ready.vue';
 import UserAnalytics from '../user-analytics.vue';
 import { RouteRecordRaw } from 'vue-router';
+import SmsAuthentication from './sms-authentication.vue';
+import EnterPhoneNumber from "./enter-phone-number.vue";
 export const routes = {
   start: {
     path: 'start',
@@ -31,6 +33,16 @@ export const routes = {
     path: 'type-password',
     name: 'type-password',
     component: TypePassword,
+  },
+  enterPhone: {  // ✅ Add new route
+    path: 'enter-phone',
+    name: 'enter-phone',
+    component: EnterPhoneNumber,
+  },
+  smsAuthentication: {  // ✅ NEW ROUTE ADDED
+    path: 'sms-authentication',
+    name: 'sms-authentication',
+    component: SmsAuthentication,
   },
   userAnalytics: {
     path: 'user-analytics',

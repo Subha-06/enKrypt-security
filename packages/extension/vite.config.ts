@@ -88,9 +88,10 @@ export default defineConfig({
         math: 'always',
         relativeUrls: true,
         javascriptEnabled: true,
+        additionalData: `@import "@/ui/action/styles/theme.less";`,  // ✅ Corrected path
       },
     },
-  },
+  },    
   build: {
     commonjsOptions: { transformMixedEsModules: true },
     emptyOutDir: true,
