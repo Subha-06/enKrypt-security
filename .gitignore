@@ -119,3 +119,4 @@ dist
 
 # IDE
 .history
+packages/sms-auth-backend/firebase-service-account.json
