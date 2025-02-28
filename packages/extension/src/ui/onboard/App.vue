@@ -1,12 +1,8 @@
 <template>
   <div class="onboard__container">
     <logo class="onboard__logo" />
-    <div class="onboard__wrap" :class="wrapClassObject()">
-      <a
-        v-if="isShowBackButton()"
-        class="onboard__back"
-        @click="$router.go(-1)"
-      >
+    <div class="onboard__wrap" :class="wrapClassObject">
+      <a v-if="isShowBackButton" class="onboard__back" @click="goBack">
         <arrow-back />
       </a>
       <router-view />
@@ -14,8 +10,8 @@
 
     <div
       v-if="
-        $route.name == 'create-wallet-wallet-ready' ||
-        $route.name == 'restore-wallet-wallet-ready'
+        route.name === 'create-wallet-wallet-ready' ||
+        route.name === 'restore-wallet-wallet-ready'
       "
       class="onboard__info"
     >
@@ -30,40 +26,49 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import Logo from '@action/icons/common/logo.vue';
 import ArrowBack from '@action/icons/common/arrow-back.vue';
 import ExtensionIcon from '@action/icons/tip/extension-icon.vue';
 import OnlineIcon from '@action/icons/tip/online-icon.vue';
 import PinIcon from '@action/icons/tip/pin-icon.vue';
-import { useRoute } from 'vue-router';
 
+const router = useRouter();
 const route = useRoute();
 
-const isShowBackButton = () => {
-  return (
-    route.name &&
-    route.name != 'new-wallet' &&
-    route.name != 'user-analytics' &&
-    route.name != 'create-wallet-wallet-ready' &&
-    route.name != 'restore-wallet-wallet-ready' &&
-    !(route.name as string).includes('hardware-wallet')
-  );
+// ✅ Back Button Functionality
+const goBack = () => {
+  router.go(-1);
 };
 
-const wrapClassObject = () => {
+// ✅ Compute Back Button Visibility
+const isShowBackButton = computed(() => {
+  return (
+    route.name &&
+    route.name !== 'new-wallet' &&
+    route.name !== 'user-analytics' &&
+    route.name !== 'create-wallet-wallet-ready' &&
+    route.name !== 'restore-wallet-wallet-ready'
+    //!route.name.includes('hardware-wallet')
+  );
+});
+
+const wrapClassObject = computed(() => {
+  const routeName = typeof route.name === 'string' ? route.name : '';
+
   return {
     'onboard__wrap--ready':
-      route.name == 'create-wallet-wallet-ready' ||
-      route.name == 'restore-wallet-wallet-ready',
-    'onboard__wrap--auto-height': route.path.match(/hardware-wallet/),
+      routeName === 'create-wallet-wallet-ready' ||
+      routeName === 'restore-wallet-wallet-ready',
+    'onboard__wrap--auto-height': routeName.includes('hardware-wallet'),
   };
-};
+});
 </script>
 
 <style lang="less">
 @import '@action/styles/theme.less';
-@import (css)
-  url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap');
+@import (css) url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
 
 body {
   width: 100vw;
@@ -145,19 +150,15 @@ body {
     box-sizing: border-box;
 
     h4 {
-      font-style: normal;
       font-weight: 500;
       font-size: 16px;
-      line-height: 24px;
       color: @primaryLabel;
       margin: 0;
     }
 
     p {
-      font-style: normal;
       font-weight: 400;
       font-size: 16px;
-      line-height: 24px;
       color: @black07;
       margin: 0;
     }

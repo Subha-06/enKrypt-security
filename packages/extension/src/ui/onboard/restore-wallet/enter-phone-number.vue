@@ -14,10 +14,11 @@
         placeholder="+1 123 456 7890"
         class="enter-phone__input"
       />
-      <!-- ✅ Added "Next" button to proceed -->
-      <button 
-        class="enter-phone__button" 
-        @click="savePhoneAndProceed" 
+
+      <!-- Next button -->
+      <button
+        class="enter-phone__button"
+        @click="sendOtpAndProceed"
         :disabled="phoneNumber.trim().length < 10"
       >
         Next
@@ -33,20 +34,42 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useRestoreStore } from '@/ui/onboard/restore-wallet/store';  
+import { useRestoreStore } from '@/ui/onboard/restore-wallet/store';
 
 const router = useRouter();
 const store = useRestoreStore();
 const phoneNumber = ref('');
 
-const savePhoneAndProceed = () => {
-  if (!phoneNumber.value.trim() || phoneNumber.value.length < 10) {
+// 1) Send OTP to Twilio backend, then proceed
+async function sendOtpAndProceed() {
+  const trimmedPhone = phoneNumber.value.trim();
+  if (!trimmedPhone || trimmedPhone.length < 10) {
     alert("Please enter a valid phone number.");
     return;
   }
-  store.setPhoneNumber(phoneNumber.value.trim()); // ✅ Store phone number
-  router.push({ name: 'restore-wallet-sms-authentication' }); // ✅ Navigate to OTP input screen
-};
+
+  try {
+    // Call your Node.js server's /send-otp endpoint
+    const response = await fetch('http://localhost:3000/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phoneNumber: trimmedPhone })
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      // Save the phone number in your store so we can use it later
+      store.setPhoneNumber(trimmedPhone);
+      // Navigate to the OTP input screen
+      router.push({ name: 'restore-wallet-sms-authentication' });
+    } else {
+      alert(`Error sending OTP: ${data.message}`);
+    }
+  } catch (error) {
+    console.error('Network error sending OTP:', error);
+    alert('Failed to send OTP. Check the console for details.');
+  }
+}
 </script>
 
 <style lang="less">
