@@ -35,7 +35,7 @@ const isDisabled = ref(true);
 const nextAction = () => {
   if (!isDisabled.value) {
     store.setPassword(password.value);
-    router.push({ name: 'restore-wallet-enter-phone' }); // ✅ Redirect to phone number input
+    router.push({ name: 'restore-wallet-type-password' }); // ✅ Redirect to phone number input
   }
 };
 

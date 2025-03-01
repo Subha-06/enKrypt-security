@@ -16,7 +16,7 @@
       <button
         class="sms-authentication__button"
         @click="verifyOtp"
-        :disabled="otp.length !== 6"
+        :disabled="otp.length !== 6 || isInitializing"
       >
         Enter
       </button>
@@ -30,34 +30,52 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useRestoreStore } from '@/ui/onboard/restore-wallet/store';
-
-// We assume you have a route for the "Confirm Password" page:
-const CONFIRM_PASSWORD_ROUTE_NAME = 'restore-wallet-type-password';
+import { routes } from '../restore-wallet/routes';
+import { onboardInitializeWallets } from '@/libs/utils/initialize-wallet'; 
+// ^^^ Make sure the path is correct for your project
 
 const router = useRouter();
 const store = useRestoreStore();
 
 const phoneNumber = ref('');
 const otp = ref('');
+const isInitializing = ref(false);
 
-// Grab the stored phone number on mount
+/**
+ * If user arrived here but never set a phone number, go back.
+ * Also ensure mnemonic + password exist, or else we can't initialize the wallet.
+ */
 onMounted(() => {
   phoneNumber.value = store.phoneNumber;
   if (!phoneNumber.value) {
     alert("Phone number missing! Redirecting...");
     router.push({ name: 'restore-wallet-enter-phone' });
   }
+  if (!store.mnemonic || !store.password) {
+    alert("Missing mnemonic or password. Redirecting to start...");
+    router.push({ name: 'restore-wallet-start' });
+  }
 });
 
-// 1) Verify the OTP code by calling /verify-otp on your Node.js backend
+// Computed property to disable button if OTP isn't 6 digits or if we're busy
+const isButtonDisabled = computed(() => {
+  return otp.value.length !== 6 || isInitializing.value;
+});
+
+/**
+ * 1) Verify the OTP code with your Node.js backend
+ * 2) If successful, initialize the wallet, then navigate to the wallet screen
+ */
 async function verifyOtp() {
   if (otp.value.length !== 6) {
     alert("Please enter a valid 6-digit OTP.");
     return;
   }
+
+  isInitializing.value = true;
 
   try {
     const response = await fetch('http://localhost:3000/verify-otp', {
@@ -71,20 +89,35 @@ async function verifyOtp() {
 
     const data = await response.json();
     if (data.success) {
-      // ✅ OTP verified successfully!
       alert("SMS Authentication Successful!");
-      // Navigate to your Confirm Password screen
-      router.push({ name: CONFIRM_PASSWORD_ROUTE_NAME });
+
+      // 🔑 Initialize/restore the wallet
+      try {
+        await onboardInitializeWallets(store.mnemonic, store.password);
+      } catch (err) {
+        console.error("Error initializing wallet:", err);
+        alert("Failed to initialize wallet. Check console for details.");
+        isInitializing.value = false;
+        return;
+      }
+
+      // ✅ Navigate to your final wallet screen
+      isInitializing.value = false;
+      router.push({ name: routes.walletReady.name });
     } else {
       alert(`Invalid OTP: ${data.message}`);
+      isInitializing.value = false;
     }
   } catch (error) {
     console.error("Network error verifying OTP:", error);
     alert("Failed to verify OTP. Check console for details.");
+    isInitializing.value = false;
   }
 }
 
-// 2) Resend the OTP by calling /send-otp again
+/**
+ * Resend the OTP by calling /send-otp again
+ */
 async function resendOtp() {
   if (!phoneNumber.value) {
     alert("No phone number to resend to. Please go back.");

@@ -12,7 +12,7 @@
         :value="typePassword"
         placeholder="Password"
         @update:value="passwordUpdated"
-        @keyup.enter="nextAction()"
+        @keyup.enter="nextAction"
       />
 
       <div
@@ -26,40 +26,60 @@
     </div>
   </div>
 </template>
+
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue';
 import BaseButton from '@action/components/base-button/index.vue';
 import BaseInput from '@action/components/base-input/index.vue';
 import { useRouter } from 'vue-router';
-import { routes } from '../restore-wallet/routes';
-import { onboardInitializeWallets } from '@/libs/utils/initialize-wallet';
 import { useRestoreStore } from './store';
-const store = useRestoreStore();
+
+// We'll redirect to "restore-wallet-enter-phone" after password confirmation
+// Make sure you have a route definition for that final name.
 const router = useRouter();
+const store = useRestoreStore();
 
 const typePassword = ref('');
 const isInitializing = ref(false);
+
+/**
+ * Called when the user presses "Next" or hits Enter.
+ * If the typed password matches the stored password, we navigate
+ * to the "restore-wallet-enter-phone" route.
+ */
 const nextAction = () => {
   if (!isDisabled.value) {
     isInitializing.value = true;
-    onboardInitializeWallets(store.mnemonic, store.password).then(() => {
-      isInitializing.value = false;
-      router.push({
-        name: routes.walletReady.name,
-      });
-    });
+
+    // ✅ Redirect to the Enter Phone screen
+    router.push({ name: 'restore-wallet-enter-phone' });
+
+    isInitializing.value = false;
   }
 };
+
+/**
+ * Disable the button if password mismatch or if we are initializing.
+ */
 const isDisabled = computed(() => {
   return typePassword.value !== store.password || isInitializing.value;
 });
+
+/**
+ * Update our local password when user types.
+ */
 const passwordUpdated = (value: string) => {
   typePassword.value = value.trim();
 };
 
+/**
+ * Ensure the user has both password and mnemonic in the store.
+ * Otherwise, we redirect them to the start screen (adjust if needed).
+ */
 const checkMnemonicAndPassword = () => {
   if (!store.password || !store.mnemonic) {
-    router.push({ path: routes.start.path });
+    // Make sure you have a route named 'restore-wallet-start'
+    router.push({ name: 'restore-wallet-start' });
   }
 };
 
