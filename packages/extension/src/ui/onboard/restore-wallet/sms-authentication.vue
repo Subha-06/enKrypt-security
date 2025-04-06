@@ -5,6 +5,11 @@
       Enter the 6-digit code sent to <b>{{ phoneNumber }}</b>.
     </p>
 
+    <!-- Countdown Timer Display -->
+    <div class="sms-authentication__timer">
+      Time remaining: {{ formattedCountdown }}
+    </div>
+
     <div class="sms-authentication__form">
       <input
         v-model="otp"
@@ -28,14 +33,13 @@
     </p>
   </div>
 </template>
-
+  
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useRestoreStore } from '@/ui/onboard/restore-wallet/store';
 import { routes } from '../restore-wallet/routes';
 import { onboardInitializeWallets } from '@/libs/utils/initialize-wallet'; 
-// ^^^ Make sure the path is correct for your project
 
 const router = useRouter();
 const store = useRestoreStore();
@@ -44,10 +48,28 @@ const phoneNumber = ref('');
 const otp = ref('');
 const isInitializing = ref(false);
 
-/**
- * If user arrived here but never set a phone number, go back.
- * Also ensure mnemonic + password exist, or else we can't initialize the wallet.
- */
+// Countdown timer: 300 seconds (5 minutes)
+const countdown = ref(300);
+const formattedCountdown = computed(() => {
+  const minutes = Math.floor(countdown.value / 60).toString().padStart(2, '0');
+  const seconds = (countdown.value % 60).toString().padStart(2, '0');
+  return `${minutes}:${seconds}`;
+});
+
+let timerInterval: number;
+
+function startTimer() {
+  clearInterval(timerInterval);
+  countdown.value = 300;
+  timerInterval = window.setInterval(() => {
+    if (countdown.value > 0) {
+      countdown.value -= 1;
+    } else {
+      clearInterval(timerInterval);
+    }
+  }, 1000);
+}
+
 onMounted(() => {
   phoneNumber.value = store.phoneNumber;
   if (!phoneNumber.value) {
@@ -58,17 +80,13 @@ onMounted(() => {
     alert("Missing mnemonic or password. Redirecting to start...");
     router.push({ name: 'restore-wallet-start' });
   }
+  startTimer();
 });
 
-// Computed property to disable button if OTP isn't 6 digits or if we're busy
-const isButtonDisabled = computed(() => {
-  return otp.value.length !== 6 || isInitializing.value;
+onUnmounted(() => {
+  clearInterval(timerInterval);
 });
 
-/**
- * 1) Verify the OTP code with your Node.js backend
- * 2) If successful, initialize the wallet, then navigate to the wallet screen
- */
 async function verifyOtp() {
   if (otp.value.length !== 6) {
     alert("Please enter a valid 6-digit OTP.");
@@ -90,8 +108,6 @@ async function verifyOtp() {
     const data = await response.json();
     if (data.success) {
       alert("SMS Authentication Successful!");
-
-      // 🔑 Initialize/restore the wallet
       try {
         await onboardInitializeWallets(store.mnemonic, store.password);
       } catch (err) {
@@ -100,8 +116,6 @@ async function verifyOtp() {
         isInitializing.value = false;
         return;
       }
-
-      // ✅ Navigate to your final wallet screen
       isInitializing.value = false;
       router.push({ name: routes.walletReady.name });
     } else {
@@ -115,9 +129,6 @@ async function verifyOtp() {
   }
 }
 
-/**
- * Resend the OTP by calling /send-otp again
- */
 async function resendOtp() {
   if (!phoneNumber.value) {
     alert("No phone number to resend to. Please go back.");
@@ -133,6 +144,7 @@ async function resendOtp() {
     const data = await response.json();
     if (data.success) {
       alert("OTP resent successfully!");
+      startTimer(); // Reset the timer when OTP is resent
     } else {
       alert(`Error resending OTP: ${data.message}`);
     }
@@ -142,7 +154,7 @@ async function resendOtp() {
   }
 }
 </script>
-
+  
 <style lang="less">
 @import '@action/styles/theme.less';
 
@@ -168,6 +180,12 @@ async function resendOtp() {
     color: @secondaryLabel;
     margin-bottom: 24px;
     line-height: 1.5;
+  }
+
+  &__timer {
+    font-size: 16px;
+    color: @primaryLabel;
+    margin-bottom: 16px;
   }
 
   &__form {
