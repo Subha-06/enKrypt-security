@@ -1,33 +1,33 @@
 <template>
-    <div class="sms-authentication">
-      <h3 class="sms-authentication__title">Verify Your Identity</h3>
-      <p class="sms-authentication__description">
-        Enter the OTP sent to <b>{{ phoneNumber }}</b>.
-      </p>
-  
-      <div class="sms-authentication__form">
-        <input
-          v-model="otp"
-          type="text"
-          class="sms-authentication__input"
-          placeholder="Paste Encrypted OTP from SMS"
-          @keyup.enter="verifyOtp"
-        />
-        <button
-          class="sms-authentication__button"
-          @click="verifyOtp"
-          :disabled="!otp.length || isInitializing"
-        >
-          Enter
-        </button>
-      </div>
-  
-      <p class="sms-authentication__label">
-        Didn't receive the code?
-        <a @click="resendOtp" class="sms-authentication__resend">Resend OTP</a>
-      </p>
+  <div class="sms-authentication">
+    <h3 class="sms-authentication__title">Verify Your Identity</h3>
+    <p class="sms-authentication__description">
+      Enter the 6-digit code sent to <b>{{ phoneNumber }}</b>.
+    </p>
+
+    <div class="sms-authentication__form">
+      <input
+        v-model="otp"
+        type="text"
+        class="sms-authentication__input"
+        placeholder="Enter OTP"
+        @keyup.enter="verifyOtp"
+      />
+      <button
+        class="sms-authentication__button"
+        @click="verifyOtp"
+        :disabled="otp.length !== 6"
+      >
+        Enter
+      </button>
     </div>
-  </template>
+
+    <p class="sms-authentication__label">
+      Didn't receive the code?
+      <a @click="resendOtp" class="sms-authentication__resend">Resend OTP</a>
+    </p>
+  </div>
+</template>
   
   <script setup lang="ts">
   import { ref, onMounted, computed } from 'vue';
@@ -35,9 +35,6 @@
   import { useOnboardStore } from './store';
   import { routes } from '../create-wallet/routes';
   import { onboardInitializeWallets } from '@/libs/utils/initialize-wallet';
-  import CryptoJS from 'crypto-js'; // AES decryption
-  
-  const AES_KEY = CryptoJS.enc.Utf8.parse('+W6N2IqN0uCIphbe'); // 
   
   const router = useRouter();
   const store = useOnboardStore();
@@ -62,42 +59,12 @@
     return !otp.value || isInitializing.value;
   });
   
-  function decryptOtp(encryptedOtp: string): string | null {
-    try {
-      const encryptedData = CryptoJS.enc.Base64.parse(encryptedOtp);
-      const iv = CryptoJS.lib.WordArray.create(encryptedData.words.slice(0, 4)); // 16 bytes = 4 words
-      const ciphertext = CryptoJS.lib.WordArray.create(encryptedData.words.slice(4));
-  
-      const cipherParams = CryptoJS.lib.CipherParams.create({ ciphertext });
-  
-      const decrypted = CryptoJS.AES.decrypt(cipherParams, AES_KEY, {
-        iv: iv,
-        mode: CryptoJS.mode.CBC,
-        padding: CryptoJS.pad.Pkcs7,
-      });
-  
-      return decrypted.toString(CryptoJS.enc.Utf8);
-    } catch (err) {
-      console.error("Decryption error:", err);
-      return null;
-    }
-  }
-  
   
   async function verifyOtp() {
-    if (!otp.value.trim()) {
-      alert("Please paste the encrypted OTP.");
-      return;
-    }
-  
-    isInitializing.value = true;
-  
-    const decryptedOtp = decryptOtp(otp.value.trim());
-    if (!decryptedOtp) {
-      alert("Decryption failed. Please check the OTP or try again.");
-      isInitializing.value = false;
-      return;
-    }
+  if (otp.value.length !== 6) {
+    alert("Please enter a valid 6-digit OTP.");
+    return;
+  }
   
     try {
       const response = await fetch('http://localhost:3000/verify-otp', {
@@ -105,7 +72,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phoneNumber: phoneNumber.value,
-          otp: decryptedOtp,
+          otp: otp.value
         })
       });
   

@@ -2,7 +2,7 @@
   <div class="sms-authentication">
     <h3 class="sms-authentication__title">Verify Your Identity</h3>
     <p class="sms-authentication__description">
-      Enter the OTP sent to <b>{{ phoneNumber }}</b>.
+      Enter the 6-digit code sent to <b>{{ phoneNumber }}</b>.
     </p>
 
     <div class="sms-authentication__form">
@@ -10,13 +10,13 @@
         v-model="otp"
         type="text"
         class="sms-authentication__input"
-        placeholder="Paste Encrypted OTP from SMS"
+        placeholder="Enter OTP"
         @keyup.enter="verifyOtp"
       />
       <button
         class="sms-authentication__button"
         @click="verifyOtp"
-        :disabled="!otp.length || isInitializing"
+        :disabled="otp.length !== 6"
       >
         Enter
       </button>
@@ -30,72 +30,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useRestoreStore } from '@/ui/onboard/restore-wallet/store';
-import { routes } from '../restore-wallet/routes';
-import { onboardInitializeWallets } from '@/libs/utils/initialize-wallet';
-import CryptoJS from 'crypto-js'; // AES decryption
 
-const AES_KEY = CryptoJS.enc.Utf8.parse('+W6N2IqN0uCIphbe'); // 
+// We assume you have a route for the "Confirm Password" page:
+const CONFIRM_PASSWORD_ROUTE_NAME = 'restore-wallet-type-password';
 
 const router = useRouter();
 const store = useRestoreStore();
 
 const phoneNumber = ref('');
 const otp = ref('');
-const isInitializing = ref(false);
 
+// Grab the stored phone number on mount
 onMounted(() => {
   phoneNumber.value = store.phoneNumber;
   if (!phoneNumber.value) {
     alert("Phone number missing! Redirecting...");
     router.push({ name: 'restore-wallet-enter-phone' });
   }
-  if (!store.mnemonic || !store.password) {
-    alert("Missing mnemonic or password. Redirecting to start...");
-    router.push({ name: 'restore-wallet-start' });
-  }
 });
 
-const isButtonDisabled = computed(() => {
-  return !otp.value || isInitializing.value;
-});
-
-function decryptOtp(encryptedOtp: string): string | null {
-  try {
-    const encryptedData = CryptoJS.enc.Base64.parse(encryptedOtp);
-    const iv = CryptoJS.lib.WordArray.create(encryptedData.words.slice(0, 4)); // 16 bytes = 4 words
-    const ciphertext = CryptoJS.lib.WordArray.create(encryptedData.words.slice(4));
-
-    const cipherParams = CryptoJS.lib.CipherParams.create({ ciphertext });
-
-    const decrypted = CryptoJS.AES.decrypt(cipherParams, AES_KEY, {
-      iv: iv,
-      mode: CryptoJS.mode.CBC,
-      padding: CryptoJS.pad.Pkcs7,
-    });
-
-    return decrypted.toString(CryptoJS.enc.Utf8);
-  } catch (err) {
-    console.error("Decryption error:", err);
-    return null;
-  }
-}
-
-
+// 1) Verify the OTP code by calling /verify-otp on your Node.js backend
 async function verifyOtp() {
-  if (!otp.value.trim()) {
-    alert("Please paste the encrypted OTP.");
-    return;
-  }
-
-  isInitializing.value = true;
-
-  const decryptedOtp = decryptOtp(otp.value.trim());
-  if (!decryptedOtp) {
-    alert("Decryption failed. Please check the OTP or try again.");
-    isInitializing.value = false;
+  if (otp.value.length !== 6) {
+    alert("Please enter a valid 6-digit OTP.");
     return;
   }
 
@@ -105,39 +65,29 @@ async function verifyOtp() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         phoneNumber: phoneNumber.value,
-        otp: decryptedOtp,
+        otp: otp.value
       })
     });
 
     const data = await response.json();
     if (data.success) {
-      alert("OTP Verified! Wallet initializing...");
-
-      try {
-        await onboardInitializeWallets(store.mnemonic, store.password);
-      } catch (err) {
-        console.error("Wallet init failed:", err);
-        alert("Failed to initialize wallet.");
-        isInitializing.value = false;
-        return;
-      }
-
-      isInitializing.value = false;
-      router.push({ name: routes.walletReady.name });
+      // ✅ OTP verified successfully!
+      alert("SMS Authentication Successful!");
+      // Navigate to your Confirm Password screen
+      router.push({ name: CONFIRM_PASSWORD_ROUTE_NAME });
     } else {
-      alert(`Verification failed: ${data.message}`);
-      isInitializing.value = false;
+      alert(`Invalid OTP: ${data.message}`);
     }
   } catch (error) {
-    console.error("OTP verification error:", error);
-    alert("Verification request failed. Check console.");
-    isInitializing.value = false;
+    console.error("Network error verifying OTP:", error);
+    alert("Failed to verify OTP. Check console for details.");
   }
 }
 
+// 2) Resend the OTP by calling /send-otp again
 async function resendOtp() {
   if (!phoneNumber.value) {
-    alert("No phone number to resend to.");
+    alert("No phone number to resend to. Please go back.");
     return;
   }
 
@@ -149,13 +99,13 @@ async function resendOtp() {
     });
     const data = await response.json();
     if (data.success) {
-      alert("OTP resent!");
+      alert("OTP resent successfully!");
     } else {
-      alert(`Resend error: ${data.message}`);
+      alert(`Error resending OTP: ${data.message}`);
     }
   } catch (error) {
-    console.error("Resend error:", error);
-    alert("Failed to resend OTP.");
+    console.error("Network error resending OTP:", error);
+    alert("Failed to resend OTP. Check console for details.");
   }
 }
 </script>
