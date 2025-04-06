@@ -2,6 +2,8 @@ import PickPassword from './pick-password.vue';
 import TypePassword from './type-password.vue';
 import RecoveryPhrase from './recovery-phrase.vue';
 import CheckPhrase from './double-check-phrase.vue';
+import EnterPhoneNumber from './enter-phone-number.vue';
+import SmsAuthentication from './sms-authentication.vue'; 
 import WalletReady from './wallet-ready.vue';
 import UserAnalytics from '../user-analytics.vue';
 import { RouteRecordRaw } from 'vue-router';
@@ -25,6 +27,16 @@ export const routes = {
     path: 'check-phrase',
     name: 'check-phrase',
     component: CheckPhrase,
+  },
+  enterPhone: {
+    path: 'enter-phone-number',
+    name: 'enter-phone-number', // ✅ match this exactly
+    component: EnterPhoneNumber,
+  }, 
+  smsAuthentication: {  // ✅ NEW ROUTE ADDED
+    path: 'sms-authentication',
+    name: 'sms-authentication',
+    component: SmsAuthentication,
   },
   userAnalytics: {
     path: 'user-analytics',

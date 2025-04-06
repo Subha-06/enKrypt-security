@@ -45,11 +45,13 @@ const isDisabled = ref(true);
 
 const nextAction = () => {
   if (!isDisabled.value) {
-    router.push({
-      name: routes.recoveryPhrase.name,
-    });
+    // Save password to the store, just in case it's not already
+    store.password = typePassword.value;
+    // Redirect to the phone number entry step
+    router.push({ name: 'create-wallet-enter-phone-number' });
   }
 };
+
 
 const passwordUpdated = (value: string) => {
   isDisabled.value = true;
