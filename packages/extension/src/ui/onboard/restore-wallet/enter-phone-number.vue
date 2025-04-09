@@ -59,7 +59,7 @@ async function sendOtpAndProceed() {
     const data = await response.json();
     if (data.success) {
       // Save the phone number in your store so we can use it later
-      store.setPhoneNumber(trimmedPhone);
+      localStorage.setItem('user_phone_number', trimmedPhone);
       // Navigate to the OTP input screen
       router.push({ name: 'restore-wallet-sms-authentication' });
     } else {

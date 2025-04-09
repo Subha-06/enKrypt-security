@@ -19,6 +19,7 @@ const otps = {};
 // 1) Endpoint to send OTP
 app.post('/send-otp', async (req, res) => {
   try {
+    // Only expect the phoneNumber for sending an OTP
     const { phoneNumber } = req.body;
     if (!phoneNumber) {
       return res.status(400).json({ success: false, message: 'Phone number is required.' });
@@ -54,6 +55,7 @@ app.post('/send-otp', async (req, res) => {
 // 2) Endpoint to verify OTP
 app.post('/verify-otp', async (req, res) => {
   try {
+    // For OTP verification, both phoneNumber and otp are expected
     const { phoneNumber, otp } = req.body;
     if (!phoneNumber || !otp) {
       return res.status(400).json({ success: false, message: 'Phone number and OTP are required.' });

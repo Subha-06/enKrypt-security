@@ -71,7 +71,7 @@ function startTimer() {
 }
 
 onMounted(() => {
-  phoneNumber.value = store.phoneNumber;
+  phoneNumber.value = localStorage.getItem('user_phone_number') || '';
   if (!phoneNumber.value) {
     alert("Phone number missing! Redirecting...");
     router.push({ name: 'restore-wallet-enter-phone' });
